@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Keep Active Menu Bar App for macOS
+Espresso - Keep Active Menu Bar App for macOS
 Auto-starts on login, runs in system tray with icon
-Uses native caffeinate APIs - no mouse simulation
+Combines caffeinate APIs with subtle F15 keypress to keep Teams status active
 """
 
 import subprocess
@@ -12,6 +12,7 @@ import os
 import sys
 from datetime import datetime
 import rumps
+from pynput.keyboard import Controller as KeyboardController, Key
 
 class KeepActiveApp(rumps.App):
     def __init__(self):
@@ -35,6 +36,7 @@ class KeepActiveApp(rumps.App):
         self.caffeinate_process = None
         self.activity_thread = None
         self.last_activity = None
+        self.keyboard = KeyboardController()
         
         # Menu items with direct callback assignment
         self.status_item = rumps.MenuItem("Status: Starting...")
@@ -95,13 +97,19 @@ class KeepActiveApp(rumps.App):
         while True:
             if self.is_active:
                 try:
-                    # Use caffeinate -u to simulate user activity
+                    # Press and release F15 key (rarely used, won't interfere)
+                    self.keyboard.press(Key.f15)
+                    time.sleep(0.01)  # Very brief press
+                    self.keyboard.release(Key.f15)
+                    
+                    # Also use caffeinate to prevent system sleep
                     subprocess.run(['caffeinate', '-u', '-t', '1'], 
                                  capture_output=True, timeout=5)
                     
                     self.last_activity = datetime.now()
                     time_str = self.last_activity.strftime('%H:%M:%S')
                     self.last_activity_item.title = f"Last activity: {time_str}"
+                    print(f"Activity simulated at {time_str} (F15 keypress)")
                     
                 except Exception as e:
                     print(f"Activity update failed: {e}")
@@ -204,6 +212,8 @@ def main():
         try:
             import rumps
             print("✅ rumps module available")
+            from pynput.keyboard import Controller
+            print("✅ pynput module available")
             subprocess.run(['caffeinate', '--help'], 
                           capture_output=True, timeout=5)
             print("✅ caffeinate command available")
