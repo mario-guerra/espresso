@@ -12,7 +12,6 @@ espresso/
 ├── requirements.txt        # Python dependencies
 ├── com.keepactive.agent.plist # LaunchAgent template
 ├── README.md              # This file
-├── SOLUTION_COMPARISON.md # Technical comparison of approaches
 ├── LICENSE                # MIT license
 └── .gitignore            # Git ignore rules
 ```
