@@ -52,9 +52,10 @@ Click the ☕ icon to access:
 ## 🔧 How It Works
 
 1. **Sleep Prevention**: Uses `caffeinate -dims` to prevent system sleep
-2. **Activity Simulation**: Runs `caffeinate -u -t 1` every 4 minutes
-3. **Teams Status**: Activity updates keep Teams thinking you're active
-4. **Background Operation**: Runs silently with minimal system impact
+2. **Activity Simulation**: Checks system idle time every 4 minutes
+3. **Smart Mouse Movement**: Only moves mouse 1 pixel if idle for 2+ minutes (won't interfere with active work)
+4. **Teams Status**: Mouse movement resets macOS idle timer, keeping Teams status active
+5. **Background Operation**: Runs silently with minimal system impact
 
 ## 📋 What Gets Installed
 
@@ -62,7 +63,10 @@ Click the ☕ icon to access:
   - `keep_active_menubar.py` - Main menu bar application
   - `requirements.txt` - Dependencies list
 - **Auto-Start**: `~/Library/LaunchAgents/com.keepactive.agent.plist` - macOS launch agent
-- **Dependency**: `rumps` Python package for menu bar functionality
+- **Dependencies**: 
+  - `rumps` - Python package for menu bar functionality
+  - `pynput` - Python package for mouse control
+  - `pyobjc-framework-Quartz` - macOS Quartz framework for idle time detection
 
 ## 🗑️ Uninstall
 
@@ -80,8 +84,8 @@ This removes:
 If you prefer not to auto-install:
 
 ```bash
-# Install dependency
-pip3 install rumps
+# Install dependencies
+pip3 install rumps pynput pyobjc-framework-Quartz
 
 # Run manually
 python3 keep_active_menubar.py

@@ -35,10 +35,10 @@ mkdir -p "$INSTALL_DIR"
 
 # Install Python dependencies first
 echo "📦 Installing Python dependencies..."
-# Install the latest version of rumps (0.4.0+ is compatible with Python 3.13)
-if ! pip3 install --upgrade rumps 2>/dev/null; then
+# Install all required packages
+if ! pip3 install --upgrade rumps pynput pyobjc-framework-Quartz 2>/dev/null; then
     echo "   Global install failed, installing for user..."
-    pip3 install --user --upgrade rumps
+    pip3 install --user --upgrade rumps pynput pyobjc-framework-Quartz
 fi
 
 # Find the correct Python path that has rumps installed

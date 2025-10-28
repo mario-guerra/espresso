@@ -2,7 +2,8 @@
 """
 Espresso - Keep Active Menu Bar App for macOS
 Auto-starts on login, runs in system tray with icon
-Combines caffeinate APIs with subtle F15 keypress to keep Teams status active
+Combines caffeinate APIs with subtle mouse movement to keep Teams status active
+Only moves mouse when system has been idle (doesn't interfere with active work)
 """
 
 import subprocess
@@ -12,7 +13,12 @@ import os
 import sys
 from datetime import datetime
 import rumps
-from pynput.keyboard import Controller as KeyboardController, Key
+from pynput.mouse import Controller as MouseController
+import Quartz
+
+# Force unbuffered output so logs appear immediately
+sys.stdout.reconfigure(line_buffering=True)
+sys.stderr.reconfigure(line_buffering=True)
 
 class KeepActiveApp(rumps.App):
     def __init__(self):
@@ -36,7 +42,10 @@ class KeepActiveApp(rumps.App):
         self.caffeinate_process = None
         self.activity_thread = None
         self.last_activity = None
-        self.keyboard = KeyboardController()
+        self.mouse = MouseController()
+        
+        # Idle threshold: only simulate activity if idle for more than this (in seconds)
+        self.idle_threshold = 120  # 2 minutes
         
         # Menu items with direct callback assignment
         self.status_item = rumps.MenuItem("Status: Starting...")
@@ -77,10 +86,12 @@ class KeepActiveApp(rumps.App):
             
             self.status_item.title = "Status: Active ✅"
             self.title = "☕"  # Coffee cup when active
+            print(f"Espresso started at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", flush=True)
             
         except Exception as e:
             self.status_item.title = f"Status: Error - {str(e)}"
             self.title = "❌"
+            print(f"Error starting Espresso: {e}", flush=True)
     
     def stop_keep_active(self):
         """Stop the caffeinate process."""
@@ -92,27 +103,51 @@ class KeepActiveApp(rumps.App):
         self.status_item.title = "Status: Paused 🫗"
         self.title = "🫗"  # Empty cup when paused
     
+    def get_idle_time(self):
+        """Get system idle time in seconds using macOS Quartz API."""
+        try:
+            idle_time = Quartz.CGEventSourceSecondsSinceLastEventType(
+                Quartz.kCGEventSourceStateHIDSystemState,
+                Quartz.kCGAnyInputEventType
+            )
+            return idle_time
+        except Exception as e:
+            print(f"Error getting idle time: {e}")
+            return 0
+    
     def activity_loop(self):
-        """Background thread that simulates user activity every 4 minutes."""
+        """Background thread that simulates user activity every 4 minutes.
+        Only moves mouse when system has been idle to avoid interfering with active work."""
         while True:
             if self.is_active:
                 try:
-                    # Press and release F15 key (rarely used, won't interfere)
-                    self.keyboard.press(Key.f15)
-                    time.sleep(0.01)  # Very brief press
-                    self.keyboard.release(Key.f15)
+                    idle_time = self.get_idle_time()
                     
-                    # Also use caffeinate to prevent system sleep
-                    subprocess.run(['caffeinate', '-u', '-t', '1'], 
-                                 capture_output=True, timeout=5)
-                    
-                    self.last_activity = datetime.now()
-                    time_str = self.last_activity.strftime('%H:%M:%S')
-                    self.last_activity_item.title = f"Last activity: {time_str}"
-                    print(f"Activity simulated at {time_str} (F15 keypress)")
+                    # Only simulate activity if system has been idle for more than threshold
+                    if idle_time >= self.idle_threshold:
+                        # Get current mouse position
+                        current_pos = self.mouse.position
+                        
+                        # Move mouse 1 pixel right and down
+                        self.mouse.position = (current_pos[0] + 1, current_pos[1] + 1)
+                        time.sleep(0.05)
+                        
+                        # Move back to original position
+                        self.mouse.position = current_pos
+                        
+                        # Also use caffeinate to prevent system sleep
+                        subprocess.run(['caffeinate', '-u', '-t', '1'], 
+                                     capture_output=True, timeout=5)
+                        
+                        self.last_activity = datetime.now()
+                        time_str = self.last_activity.strftime('%H:%M:%S')
+                        self.last_activity_item.title = f"Last activity: {time_str}"
+                        print(f"Activity simulated at {time_str} (mouse move, was idle {idle_time:.1f}s)", flush=True)
+                    else:
+                        print(f"Skipped activity simulation - system active (idle only {idle_time:.1f}s)", flush=True)
                     
                 except Exception as e:
-                    print(f"Activity update failed: {e}")
+                    print(f"Activity update failed: {e}", flush=True)
             
             # Sleep for 4 minutes (240 seconds)
             time.sleep(240)
@@ -212,8 +247,10 @@ def main():
         try:
             import rumps
             print("✅ rumps module available")
-            from pynput.keyboard import Controller
+            from pynput.mouse import Controller
             print("✅ pynput module available")
+            import Quartz
+            print("✅ Quartz module available")
             subprocess.run(['caffeinate', '--help'], 
                           capture_output=True, timeout=5)
             print("✅ caffeinate command available")
